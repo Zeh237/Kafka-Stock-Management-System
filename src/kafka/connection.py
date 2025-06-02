@@ -2,6 +2,7 @@ import os
 import json
 from confluent_kafka import Producer, Consumer, KafkaException, KafkaError
 import logging
+from confluent_kafka.admin import AdminClient, NewTopic, TopicMetadata, KafkaException
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -97,6 +98,50 @@ class KafkaConnection:
             logger.info(f"Message queued for production to topic {topic}")
         except Exception as e:
             logger.error(f"Error producing message to Kafka: {e}", exc_info=True)
+
+    def create_topic(self, topic_name, num_partitions=1, replication_factor=1):
+        """
+        Creates a Kafka topic using the AdminClient
+        """
+        admin_config = {k: v for k, v in self.get_config(client_type='admin').items() if k not in ['acks', 'retries', 'group.id', 'auto.offset.reset', 'enable.auto.commit', 'auto.commit.interval.ms']}
+
+        admin_client = AdminClient(admin_config)
+
+        new_topic = NewTopic(topic_name, num_partitions=num_partitions, replication_factor=replication_factor)
+
+        futures = admin_client.create_topics([new_topic])
+
+        for topic, future in futures.items():
+            try:
+                future.result()
+                logger.info(f"Topic '{topic_name}' created successfully.")
+                return True
+            except KafkaException as e:
+                if e.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS:
+                    logger.warning(f"Topic '{topic_name}' already exists.")
+                    return True
+                else:
+                    logger.error(f"Failed to create topic '{topic_name}': {e}")
+                    return False
+            except Exception as e:
+                logger.error(f"An unexpected error occurred while creating topic '{topic_name}': {e}", exc_info=True)
+                return 
+            
+    def list_topics(self):
+        """
+        Lists all topics in the Kafka cluster using the AdminClient.
+        """
+        admin_config = {k: v for k, v in self.get_config(client_type='admin').items() if k not in ['acks', 'retries', 'group.id', 'auto.offset.reset', 'enable.auto.commit', 'auto.commit.interval.ms']}
+        admin_client = AdminClient(admin_config)
+
+        try:
+            metadata = admin_client.list_topics(timeout=10).topics
+            topic_names = sorted(list(metadata.keys()))
+            logger.info(f"Successfully listed {len(topic_names)} topics.")
+            return topic_names
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while listing topics: {e}", exc_info=True)
+            return []
 
     def subscibe_to_topic(self, consumer, topic):
         """subscribes a consumer to a topic"""
