@@ -1,0 +1,59 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+media/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Node/Webpack (if frontend exists)
+node_modules/
+npm-debug.log*
+staticfiles/
+webpack-stats.json
+app.db
+
+# Database migrations (optional: uncomment if you want to ignore migrations)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Secrets & Environment Variables
+.env
+.env.local
+.env.dev
+.env.prod
+secrets.json
+*.key
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build & Deployment
+dist/
+build/
+*.egg-info/
+*.egg
+.DS_Store
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
