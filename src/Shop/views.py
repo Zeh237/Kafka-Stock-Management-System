@@ -1,6 +1,6 @@
 import logging
 from src.kafka.connection import KafkaConnection
-from flask import render_template, request, redirect, url_for, flash
+from flask import current_app, render_template, request, redirect, url_for, flash
 from src.Shop.validation import ProductCreateCommand
 import os
 import uuid
@@ -20,12 +20,18 @@ def allowed_file(filename):
 
 class ShopViews:
     def __init__(self):
-        self.kafka_connection = KafkaConnection()
+        self.kafka_producer = current_app.kafka_producer
+        self.kafka_connection = current_app.kafka_connection
+
+    def _get_kafka_producer(self):
+        return self.kafka_producer
+    
+    def _get_kafka_connection(self):
+        return self.kafka_connection
 
     def create_product(self):
         """
-        Handles product creation with robust validation before Kafka.
-        Generates UUID for product and produces CreateProductCommand.
+        Handles product creation to Kafka.
         """
         if request.method == 'GET':
             return render_template('shop/create_product.html')
