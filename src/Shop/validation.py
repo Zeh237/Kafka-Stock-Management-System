@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, field_validator, Field
 from typing import Optional
 import re
 
@@ -9,7 +9,7 @@ class ProductCreateCommand(BaseModel):
     stock_quantity: int = Field(..., ge=0)
     image_url: Optional[str] = None
     
-    @validator('name')
+    @field_validator('name')
     def validate_name(cls, v):
         if not v.strip():
             raise ValueError("Product name cannot be empty")
@@ -17,7 +17,7 @@ class ProductCreateCommand(BaseModel):
             raise ValueError("Product name too long (max 100 chars)")
         return v.strip()
     
-    @validator('price')
+    @field_validator('price')
     def validate_price(cls, v):
         if v <= 0:
             raise ValueError("Price must be positive")
@@ -25,7 +25,7 @@ class ProductCreateCommand(BaseModel):
             raise ValueError("Price too high")
         return round(v, 2)
     
-    @validator('description')
+    @field_validator('description')
     def validate_description(cls, v):
         if len(v) < 10:
             raise ValueError("Description too short (min 10 chars)")
@@ -33,7 +33,7 @@ class ProductCreateCommand(BaseModel):
             raise ValueError("Description too long (max 2000 chars)")
         return v
     
-    @validator('stock_quantity')
+    @field_validator('stock_quantity')
     def validate_stock(cls, v):
         if v < 0:
             raise ValueError("Stock cannot be negative")
