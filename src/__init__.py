@@ -18,13 +18,16 @@ def create_app(config_class=Config):
     Creates and configures a Flask application instance, initializes database,
     and sets up Kafka topics and a producer.
     """
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=os.path.join(os.getcwd(), 'src', 'static'))
     app.config.from_object(config_class)
     app.logger.info(f"Application starting up with config: {config_class.__name__}")
 
     # Initialize extensions with the application instance
     db.init_app(app)
     migrate.init_app(app, db)
+
+    from src.Shop.routes import shop_bp
+    app.register_blueprint(shop_bp, url_prefix='/shop')
 
     with app.app_context():
         from src.Shop.model import Products, Orders, Inventory
@@ -63,6 +66,7 @@ def create_app(config_class=Config):
                     app.logger.error(f"Failed to create Kafka topic '{topic}'. Application might not function correctly.")
     
         app.kafka_producer = kafka_conn.create_producer()
+        app.kafka_connection = kafka_conn
         if app.kafka_producer:
             app.logger.info("Kafka Producer initialized and attached to app.")
         else:
