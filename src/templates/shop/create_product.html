@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Product{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Create New Product</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <!-- Remove the form.hidden_tag() line -->
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Product Name</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ request.form.name if request.form }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" class="form-control" id="price" 
+                                   name="price" value="{{ request.form.price if request.form }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="3" required>{{ request.form.description if request.form }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stock_quantity" class="form-label">Stock Quantity</label>
+                        <input type="number" class="form-control" id="stock_quantity" 
+                               name="stock_quantity" value="{{ request.form.stock_quantity if request.form }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Product Image</label>
+                        <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
+                        <div class="form-text">Allowed formats: PNG, JPG, JPEG, GIF</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Create Product</button>
+                        <a href="{{ url_for('shop.list_products') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

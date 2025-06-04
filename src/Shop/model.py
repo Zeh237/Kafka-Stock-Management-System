@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from src import db
 
 class Products(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, primary_key=True)
     name = db.Column(db.String)
     price = db.Column(db.Integer)
     description = db.Column(db.String)
@@ -16,7 +16,7 @@ class Products(db.Model):
     
 class Orders(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    product_id = db.Column(db.String, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer)
     total_price = db.Column(db.Integer)
     created_at = db.Column(db.DateTime)

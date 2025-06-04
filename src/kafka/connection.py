@@ -17,11 +17,8 @@ class KafkaConnection:
         """
         config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
-            'acks': 'all' if client_type == 'producer' else None,
-            'retries': 3 if client_type == 'producer' else None,
         }
 
-        # security configurations if present in environment variables
         security_protocol = os.getenv('KAFKA_SECURITY_PROTOCOL')
         if security_protocol:
             config['security.protocol'] = security_protocol
@@ -37,7 +34,10 @@ class KafkaConnection:
                     config['sasl.username'] = sasl_username
                     config['sasl.password'] = sasl_password
 
-        # Consumer-specific configurations
+        if client_type == 'producer':
+            config['acks'] = 'all'
+            config['retries'] = 3
+            
         if client_type == 'consumer':
             config['group.id'] = os.getenv('KAFKA_GROUP_ID', 'default_flask_app_group')
             config['auto.offset.reset'] = 'earliest'
