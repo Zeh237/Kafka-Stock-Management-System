@@ -36,7 +36,7 @@ class ProductConsumer:
             message_value = json.loads(msg.value().decode('utf-8'))
             logger.info(f"Processing product message: {message_value}")
 
-            if message_value.get('command_type') != 'CreateProductCommand':
+            if message_value.get('command_type') not in ['CreateProductCommand', 'UpdateProductCommand', 'DeleteProductCommand']:
                 logger.warning(f"Unexpected command type: {message_value.get('command_type')}")
                 return
 
