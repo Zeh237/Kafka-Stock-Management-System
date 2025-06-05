@@ -126,9 +126,128 @@ class ShopViews:
     def home(self):
         return render_template('shop/home.html')
 
-    def update_product(self):
-        """update product"""
-        pass
+    def update_product(self, product_id):
+        product_with_inventory = db.session.query(
+            Products,
+            Inventory.quantity
+        ).outerjoin(Inventory, Products.id == Inventory.product_id)\
+        .filter(Products.id == product_id)\
+        .first()
+
+        if not product_with_inventory:
+            flash("Product not found", "warning")
+            return redirect(url_for('shop.list_products'))
+
+        product, current_stock = product_with_inventory
+        
+        if request.method == 'GET':
+            form_data = {
+                'name': product.name,
+                'price': product.price,
+                'description': product.description,
+                'stock_quantity': current_stock if current_stock is not None else 0,
+                'image_url': product.image_url
+            }
+            return render_template('shop/update_product.html', product=product, form_data=form_data)
+
+        elif request.method == 'POST':
+            producer = self._get_kafka_producer()
+            kafka_conn = self._get_kafka_connection()
+            new_image_absolute_path = None
+            old_image_relative_path = product.image_url
+            
+            try:
+                # image update
+                product_image = request.files.get('image')
+                if product_image and allowed_file(product_image.filename):
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                    unique_filename = f"{uuid.uuid4()}{os.path.splitext(secure_filename(product_image.filename))[1]}"
+                    new_image_absolute_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                    product_image.save(new_image_absolute_path)
+                    new_image_relative_path_for_db = f"uploads/{unique_filename}"
+                else:
+                    new_image_relative_path_for_db = old_image_relative_path 
+
+                # validating form data
+                try:
+                    product_data = ProductCreateCommand(
+                        name=request.form.get('name', '').strip(),
+                        price=float(request.form.get('price', 0)),
+                        description=request.form.get('description', '').strip(),
+                        stock_quantity=int(request.form.get('stock_quantity', 0)),
+                        image_url=new_image_relative_path_for_db
+                    )
+                except ValueError as e:
+                    if new_image_absolute_path and os.path.exists(new_image_absolute_path):
+                        os.remove(new_image_absolute_path)
+                    flash(f"Validation error: {str(e)}", "warning")
+                    return render_template('shop/update_product.html', product=product, form_data=request.form), 400
+
+                # Update DB records
+                product.name = product_data.name
+                product.price = product_data.price
+                product.description = product_data.description
+                product.image_url = product_data.image_url
+                product.updated_at = datetime.utcnow()
+
+                inventory_item = Inventory.query.filter_by(product_id=product.id).first()
+                if inventory_item:
+                    inventory_item.quantity = product_data.stock_quantity
+                    inventory_item.updated_at = datetime.utcnow()
+                else:
+                    inventory_item = Inventory(
+                        product_id=product.id,
+                        quantity=product_data.stock_quantity,
+                        low_stock_threshold=10,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.session.add(inventory_item)
+                
+                db.session.commit()
+
+                # Deleting old image file if a new one was uploaded
+                if new_image_absolute_path and old_image_relative_path and old_image_relative_path != new_image_relative_path_for_db:
+                    old_image_absolute_path = os.path.join(os.getcwd(), 'src', 'static', old_image_relative_path)
+                    if os.path.exists(old_image_absolute_path):
+                        os.remove(old_image_absolute_path)
+
+                # Kafka Update Command
+                command_message = {
+                    "command_id": str(uuid.uuid4()),
+                    "command_type": "UpdateProductCommand",
+                    "timestamp": datetime.utcnow().isoformat() + 'Z',
+                    "payload": {
+                        "product_id": product.id,
+                        "name": product.name,
+                        "price": product.price,
+                        "description": product.description,
+                        "image_url": product.image_url,
+                        "stock_quantity": inventory_item.quantity,
+                        "updated_at": product.updated_at.isoformat() + 'Z'
+                    }
+                }
+                kafka_conn.produce_message(
+                    producer,
+                    topic='product_commands',
+                    message_obj=command_message,
+                    key=product.id
+                )
+
+                flash("Product updated successfully!", "success")
+                return redirect(url_for('shop.get_product', product_id=product.id))
+
+            except Exception as e:
+                db.session.rollback()
+                if new_image_absolute_path and os.path.exists(new_image_absolute_path):
+                    try:
+                        os.remove(new_image_absolute_path)
+                    except OSError:
+                        logger.error("Failed to clean up new image after update error")
+                flash(f"An unexpected error occurred during product update: {str(e)}", "error")
+                return render_template('shop/update_product.html', product=product, form_data=request.form), 500
+
+        return "Method Not Allowed", 405
 
     def delete_product(self, product_id):
         if request.method == 'POST':

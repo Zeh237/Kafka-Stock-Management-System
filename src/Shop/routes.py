@@ -24,7 +24,7 @@ def list_products():
 def get_product(product_id):
     return shop_views.get_product(product_id)
 
-@shop_bp.route('/products/<product_id>/update', methods=['POST'])
+@shop_bp.route('/products/<product_id>/update', methods=['POST', 'GET'])
 def update_product(product_id):
     return shop_views.update_product(product_id)
 
