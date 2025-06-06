@@ -41,33 +41,53 @@ class ProductConsumer:
                 return
 
             payload = message_value.get('payload', {})
-            
-            # Create Product
-            new_product = Products(
-                id=payload['product_id'],
-                name=payload['name'],
-                price=payload['price'],
-                description=payload['description'],
-                image_url=payload['image_url'],
-                created_at=datetime.fromisoformat(payload['created_at'].replace('Z', '+00:00')),
-                updated_at=datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
-            )
 
-            # Create Inventory
-            new_inventory = Inventory(
-                product_id=payload['product_id'],
-                quantity=payload.get('initial_stock_quantity', 0),
-                low_stock_threshold=10,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
+            if message_value.get('command_type') == 'CreateProductCommand':
+                # Create Product
+                new_product = Products(
+                    id=payload['product_id'],
+                    name=payload['name'],
+                    price=payload['price'],
+                    description=payload['description'],
+                    image_url=payload['image_url'],
+                    created_at=datetime.fromisoformat(payload['created_at'].replace('Z', '+00:00')),
+                    updated_at=datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
+                )
 
-            # Save to database in a transaction
-            db.session.add(new_product)
-            db.session.add(new_inventory)
+                 # Create Inventory
+                new_inventory = Inventory(
+                    product_id=payload['product_id'],
+                    quantity=payload.get('initial_stock_quantity', 0),
+                    low_stock_threshold=10,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
+
+                db.session.add(new_inventory)
+                db.session.add(new_product)
+                logger.info(f"Successfully created product {new_product.id} and inventory record")
+
+            # update product
+            if message_value.get('command_type') == 'UpdateProductCommand':
+                product = Products.query.get(payload['product_id'])
+                if product:
+                    product.name = payload['name']
+                    product.price = payload['price']
+                    product.description = payload['description']
+                    product.image_url = payload['image_url']
+                    product.updated_at = datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
+
+                # update inventory
+                inventory_item = Inventory.query.filter_by(product_id=payload['product_id']).first()
+                if inventory_item:
+                    inventory_item.quantity = payload['stock_quantity']
+                    inventory_item.updated_at = datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
+
+                db.session.add(product)
+                db.session.add(inventory_item)
+                logger.info(f"Successfully updated product {product.id} and inventory record")
+
             db.session.commit()
-
-            logger.info(f"Successfully created product {new_product.id} and inventory record")
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode message: {e}")

@@ -40,3 +40,23 @@ class ProductCreateCommand(BaseModel):
         if v > 100000:
             raise ValueError("Stock quantity too high")
         return v
+class OrderCreateCommand(BaseModel):
+    product_id: str = Field(..., min_length=1)
+    quantity: int = Field(..., gt=0)
+    total_price: float = Field(..., gt=0)
+
+    @field_validator('quantity')
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError("Quantity must be positive")
+        if v > 1000:
+            raise ValueError("Quantity too high")
+        return v
+
+    @field_validator('total_price')
+    def validate_total_price(cls, v):
+        if v <= 0:
+            raise ValueError("Total price must be positive")
+        if v > 1000000:
+            raise ValueError("Total price too high")
+        return round(v, 2)

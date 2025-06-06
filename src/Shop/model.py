@@ -15,7 +15,7 @@ class Products(db.Model):
         return f"<Product {self.name}>"
     
 class Orders(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, primary_key=True)
     product_id = db.Column(db.String, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer)
     total_price = db.Column(db.Integer)
