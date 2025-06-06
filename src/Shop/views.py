@@ -224,6 +224,7 @@ class ShopViews:
                         "description": product.description,
                         "image_url": product.image_url,
                         "stock_quantity": inventory_item.quantity,
+                        'created_at': product.created_at.isoformat() + 'Z',
                         "updated_at": product.updated_at.isoformat() + 'Z'
                     }
                 }
@@ -322,7 +323,6 @@ class ShopViews:
                     'stock_quantity': quantity if quantity is not None else 0
                 }
                 products_for_template.append(product_dict)
-                print(products_for_template)
             return render_template('shop/list_products.html', products=products_for_template)
         except Exception as e:
             logger.error(f"Error listing products: {str(e)}", exc_info=True)

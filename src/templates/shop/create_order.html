@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Order{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Create New Order</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {# Hidden fields for product_id and price.
+                       These values should always be present, either from direct template arguments (GET)
+                       or from form_data if the form was resubmitted due to a POST error. #}
+                    <input type="hidden" name="product_id" 
+                           value="{{ product_id if product_id is defined else form_data.product_id if form_data is defined and form_data.product_id is defined else '' }}">
+                    <input type="hidden" name="price" 
+                           value="{{ price if price is defined else form_data.price if form_data is defined and form_data.price is defined else 0 }}">
+                    
+                    {# Determine display values:
+                       - Prioritize direct `product_id`/`price` from GET request.
+                       - Fallback to `form_data` from POST request if a validation error occurred.
+                       - Use a default empty string/0 if neither is defined (shouldn't happen with your route).
+                    #}
+                    {% set display_product_id = product_id if product_id is defined else form_data.product_id if form_data is defined and form_data.product_id is defined else '' %}
+                    {% set display_price = price if price is defined else form_data.price if form_data is defined and form_data.price is defined else 0 %}
+
+                    {# Display the product ID for user confirmation, but keep it read-only #}
+                    <div class="mb-3">
+                        <label for="product_id_display" class="form-label">Product ID</label>
+                        <input type="text" class="form-control" id="product_id_display" 
+                               value="{{ display_product_id }}" readonly>
+                        <div class="form-text">Product to order: <strong class="text-primary">{{ display_product_id }}</strong></div>
+                    </div>
+
+                    {# Display the unit price for user confirmation, but keep it read-only #}
+                    <div class="mb-3">
+                        <label for="product_price_display" class="form-label">Unit Price</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" id="product_price_display" 
+                                   value="{{ '%.2f'|format(display_price|float) }}" readonly> {# Ensure price is treated as float #}
+                        </div>
+                        <div class="form-text">Price per unit: <strong class="text-primary">${{ '%.2f'|format(display_price|float) }}</strong></div>
+                    </div>
+
+                    {# User input field for quantity #}
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                               min="1" value="{{ form_data.quantity if form_data is defined and form_data.quantity is defined else 1 }}" required>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Place Order</button>
+                        {# Assuming 'order.list_orders' is the correct endpoint for canceling #}
+                        <a href="{{ url_for('shop.list_orders') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

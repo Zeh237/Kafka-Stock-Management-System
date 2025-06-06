@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Order Details - {{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Order #{{ order.id }}</h1>
+        <a href="{{ url_for('shop.list_orders') }}" class="btn btn-secondary">Back to All Orders</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Order Information</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Order ID:</strong> {{ order.id }}</p>
+                    <p><strong>Quantity:</strong> {{ order.quantity }}</p>
+                    <p><strong>Total Price:</strong> ${{ "%.2f"|format(order.total_price|float) }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Created At:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p><strong>Last Updated:</strong> {{ order.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">Product Details</h4>
+        </div>
+        <div class="card-body">
+            {% if order.product %}
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    {% if order.product.image_url %}
+                    <img src="{{ url_for('static', filename=order.product.image_url) }}" 
+                         alt="{{ order.product.name }}" class="img-fluid rounded" 
+                         style="max-height: 150px; object-fit: contain;">
+                    {% else %}
+                    <div class="bg-light p-3 rounded d-flex align-items-center justify-content-center" style="max-height: 150px; min-height: 100px;">
+                        <small class="text-muted">No Image</small>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-8">
+                    <h5 class="card-title">{{ order.product.name }}</h5>
+                    <p class="card-text text-muted">{{ order.product.description | truncate(150) }}</p>
+                    <p class="card-text"><strong>Unit Price:</strong> ${{ "%.2f"|format(order.product.price|float) }}</p>
+                    <a href="{{ url_for('shop.get_product', product_id=order.product.id) }}" class="btn btn-sm btn-outline-primary">View Product Details</a>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">Product details not available (Product ID: {{ order.product_id }}).</p>
+            <p class="small text-danger">This may occur if the product associated with this order has been deleted.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        {# <form action="{{ url_for('shop.delete_order', order_id=order.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this order? This action cannot be undone.');">
+            <button type="submit" class="btn btn-danger">Delete Order</button>
+        </form> #}
+    </div>
+</div>
+{% endblock %}
