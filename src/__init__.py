@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from src.config import Config
 from src.kafka.connection import KafkaConnection
+from src.redis.redis_connection import RedisConnection
 import logging
 import os
 
@@ -36,6 +37,9 @@ def create_app(config_class=Config):
 
         kafka_conn = KafkaConnection()
         app.logger.info("KafkaConnection instance created.")
+
+        app.redis_connection = RedisConnection()
+        app.logger.info("RedisConnection instance created.")
 
         # Topics needed for the system
         required_topics = [
@@ -71,7 +75,5 @@ def create_app(config_class=Config):
             app.logger.info("Kafka Producer initialized and attached to app.")
         else:
             app.logger.error("Failed to initialize Kafka Producer. Commands cannot be sent to Kafka.")
-
-        app.logger.info("Remember: Kafka consumers for read model updates should run as separate background services.")
 
     return app
