@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import current_app
 from src import db
-from src.Shop.model import Products, Inventory, Orders
+from src.Shop.model import Inventory, Orders, Products
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -28,6 +28,10 @@ class OrderConsumer:
         if not self.consumer:
             return False
         
+        self.producer = self.kafka_conn.create_producer()
+        if not self.producer:
+            return False
+        
         return True
     
     def handle_order_message(self, msg):
@@ -43,8 +47,7 @@ class OrderConsumer:
             payload = message_value.get('payload', {})
 
             if message_value.get('command_type') == 'CreateOrderCommand':
-                # Create orders
-                new_product = Orders(
+                new_order = Orders(
                     id=payload['order_id'],
                     product_id=payload['product_id'],
                     quantity=payload['quantity'],
@@ -56,12 +59,45 @@ class OrderConsumer:
                 # update inventory
                 inventory_item = Inventory.query.filter_by(product_id=payload['product_id']).first()
                 if inventory_item:
-                    inventory_item.quantity =inventory_item.quantity - payload['quantity']
+                    inventory_item.quantity -= payload['quantity']
                     inventory_item.updated_at = datetime.fromisoformat(payload['updated_at'].replace('Z', '+00:00'))
 
                 db.session.add(inventory_item)
-                db.session.add(new_product)
-                logger.info(f"Successfully created product {new_product.id} and inventory record")
+                db.session.add(new_order)
+                
+                # product details for analytics event
+                product = Products.query.get(payload['product_id'])
+                
+                if product:
+                    analytics_payload = {
+                        "event_type": "OrderCreated",
+                        "order_id": new_order.id,
+                        "quantity": new_order.quantity,
+                        "total_price": new_order.total_price,
+                        "order_created_at": new_order.created_at.isoformat() + 'Z',
+                        "product_details": {
+                            "product_id": product.id,
+                            "name": product.name,
+                            "price": product.price,
+                            "description": product.description,
+                            "image_url": product.image_url
+                        }
+                    }
+                    
+                    if self.kafka_conn:
+                        self.kafka_conn.produce_message(
+                            producer=self.producer,
+                            topic='analytics_events',
+                            message_obj=analytics_payload,
+                            key=new_order.id
+                        )
+                        logger.info(f"Published enriched order event to analytics_events topic for order {new_order.id}")
+                    else:
+                        logger.warning("Kafka connection not available to publish to analytics_events topic.")
+                else:
+                    logger.warning(f"Product with ID {payload['product_id']} not found for order {new_order.id}. Analytics event will be incomplete.")
+
+                logger.info(f"Successfully created order {new_order.id} and updated inventory record")
 
             db.session.commit()
 
@@ -71,7 +107,7 @@ class OrderConsumer:
             logger.error(f"Missing required field in message: {e}")
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error processing product message: {e}", exc_info=True)
+            logger.error(f"Error processing order message: {e}", exc_info=True)
 
     def start_consuming(self, topic_name='order_commands'):
         """Start consuming messages from Kafka using the KafkaConnection's consume_messages method."""
@@ -95,7 +131,7 @@ class OrderConsumer:
             logger.error(f"An unexpected error occurred during consumer operation: {e}", exc_info=True)
         finally:
             self.shutdown()
-            logger.info("ProductConsumer consumption loop has ended.")
+            logger.info("OrderConsumer consumption loop has ended.")
 
     def shutdown(self):
         """Cleanup resources"""
